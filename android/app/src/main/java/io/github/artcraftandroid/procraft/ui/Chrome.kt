@@ -41,14 +41,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Painter
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -82,10 +80,10 @@ fun TopBar(vm: CanvasViewModel, modifier: Modifier = Modifier) {
             Box(Modifier.size(Pc.GalleryWidth, Pc.BarButtonHeight).tap { vm.closeArtwork() }, contentAlignment = Alignment.CenterStart) {
                 Text("Gallery", color = Pc.BarText, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false, modifier = Modifier.offset(y = (-1).dp))
             }
-            ActionButton(painterResource(R.drawable.actions), "Actions", fit.button, selected = vm.panel == Panel.ACTIONS) { vm.toggle(Panel.ACTIONS) }
-            ActionButton(painterResource(R.drawable.adjustments), "Adjustments", fit.button, selected = vm.panel == Panel.ADJUSTMENTS || vm.adjustment != null || vm.opacityLayer != null || vm.recoloring) { vm.adjustmentsPressed() }
-            ActionButton(painterResource(R.drawable.selection), "Selection", fit.button, selected = vm.selecting, glyph = 33.dp) { vm.toggleSelecting() }
-            ActionButton(painterResource(R.drawable.transform), "Transform", fit.button, selected = vm.transforming, glyph = 44.dp) { vm.toggleTransform() }
+            ActionButton(R.drawable.actions, "Actions", fit.button, selected = vm.panel == Panel.ACTIONS) { vm.toggle(Panel.ACTIONS) }
+            ActionButton(R.drawable.adjustments, "Adjustments", fit.button, selected = vm.panel == Panel.ADJUSTMENTS || vm.adjustment != null || vm.opacityLayer != null || vm.recoloring) { vm.adjustmentsPressed() }
+            ActionButton(R.drawable.selection, "Selection", fit.button, selected = vm.selecting, glyph = 33.dp) { vm.toggleSelecting() }
+            ActionButton(R.drawable.transform, "Transform", fit.button, selected = vm.transforming, glyph = 44.dp) { vm.toggleTransform() }
         }
         // the layers and colour panels take the highlight from the current tool while open
         val panelOpen = vm.panel == Panel.LAYERS || vm.panel == Panel.COLOR || vm.transforming || vm.selecting || vm.adjustment != null
@@ -96,7 +94,7 @@ fun TopBar(vm: CanvasViewModel, modifier: Modifier = Modifier) {
         ) {
             // painting an adjustment on (or cloning), the brush shows it
             ToolButton(
-                if (vm.adjustPencil) rememberVectorPainter(PcIcons.BrushPaintedOn) else painterResource(R.drawable.brush),
+                if (vm.adjustPencil) R.drawable.brush_painted_on else R.drawable.brush,
                 "Paint",
                 fit.button,
                 selected = vm.adjustPencil || (!panelOpen && vm.tool == ToolKind.PAINT),
@@ -104,13 +102,13 @@ fun TopBar(vm: CanvasViewModel, modifier: Modifier = Modifier) {
             ) {
                 vm.toolPressed(ToolKind.PAINT)
             }
-            ToolButton(painterResource(R.drawable.smudge), "Smudge", fit.button, selected = !panelOpen && vm.tool == ToolKind.SMUDGE, onHold = { vm.toolHeld(ToolKind.SMUDGE) }) {
+            ToolButton(R.drawable.smudge, "Smudge", fit.button, selected = !panelOpen && vm.tool == ToolKind.SMUDGE, onHold = { vm.toolHeld(ToolKind.SMUDGE) }) {
                 vm.toolPressed(ToolKind.SMUDGE)
             }
-            ToolButton(painterResource(R.drawable.erase), "Erase", fit.button, selected = !panelOpen && vm.tool == ToolKind.ERASE, onHold = { vm.toolHeld(ToolKind.ERASE) }) {
+            ToolButton(R.drawable.erase, "Erase", fit.button, selected = !panelOpen && vm.tool == ToolKind.ERASE, onHold = { vm.toolHeld(ToolKind.ERASE) }) {
                 vm.toolPressed(ToolKind.ERASE)
             }
-            ToolButton(painterResource(R.drawable.layers), "Layers", fit.button, selected = vm.panel == Panel.LAYERS) { vm.toggle(Panel.LAYERS) }
+            ToolButton(R.drawable.layers, "Layers", fit.button, selected = vm.panel == Panel.LAYERS) { vm.toggle(Panel.LAYERS) }
             ColorButton(vm, fit.button)
         }
     }
@@ -118,12 +116,12 @@ fun TopBar(vm: CanvasViewModel, modifier: Modifier = Modifier) {
 
 /** An action button: its glyph on a dark disc, which turns blue while its panel is open. */
 @Composable
-private fun ActionButton(icon: Painter, label: String, width: Dp, selected: Boolean = false, glyph: Dp = 36.dp, onClick: () -> Unit = {}) {
+private fun ActionButton(iconRes: Int, label: String, width: Dp, selected: Boolean = false, glyph: Dp = 36.dp, onClick: () -> Unit = {}) {
     val lit = animateHighlight(selected)
     Box(Modifier.size(width, Pc.BarButtonHeight).tap(onClick = onClick), contentAlignment = Alignment.Center) {
         Box(Modifier.size(Pc.ActionDiscSize).clip(CircleShape).background(lerp(Pc.ActionDisc, Pc.BarGlyphSelected, lit)))
         // the glyphs are drawn in a 44 frame, shown [glyph] across (most 36)
-        Icon(painter = icon, contentDescription = label, tint = lerp(Pc.ActionGlyph, Color.White, lit), modifier = Modifier.requiredSize(glyph))
+        Icon(painter = painterResource(iconRes), contentDescription = label, tint = lerp(Pc.ActionGlyph, Color.White, lit), modifier = Modifier.requiredSize(glyph))
     }
 }
 
@@ -136,11 +134,11 @@ private fun Modifier.tapOrHold(onClick: () -> Unit, onHold: () -> Unit): Modifie
 
 /** A tool button: tapped, the tool (or its brushes); held ([onHold]), it takes the current brush. */
 @Composable
-private fun ToolButton(icon: Painter, label: String, width: Dp, selected: Boolean, onHold: (() -> Unit)? = null, onClick: () -> Unit) {
+private fun ToolButton(iconRes: Int, label: String, width: Dp, selected: Boolean, onHold: (() -> Unit)? = null, onClick: () -> Unit) {
     val touch = if (onHold != null) Modifier.tapOrHold(onClick, onHold) else Modifier.tap(onClick = onClick)
     Box(Modifier.size(width, Pc.BarButtonHeight).then(touch), contentAlignment = Alignment.Center) {
         // a 44 frame shown as it is, over the 38 tall button
-        Icon(painter = icon, contentDescription = label, tint = lerp(Pc.BarGlyph, Pc.BarGlyphSelected, animateHighlight(selected)), modifier = Modifier.requiredSize(44.dp))
+        Icon(painter = painterResource(iconRes), contentDescription = label, tint = lerp(Pc.BarGlyph, Pc.BarGlyphSelected, animateHighlight(selected)), modifier = Modifier.requiredSize(44.dp))
     }
 }
 
