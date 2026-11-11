@@ -2570,6 +2570,11 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
             val kept = brushPrefs.getString(BRUSH_LIBRARY, null)
             if (kept != null && s.loadBrushLibrary(kept) && s.saveBrushLibraryFile(brushLibraryFile.path)) {
                 brushPrefs.edit().remove(BRUSH_LIBRARY).apply()
+            } else {
+                // no kept library: import the built-in Procreate brush presets
+                // so they are available without manual import
+                importBuiltInBrushes(s)
+                s.saveBrushLibraryFile(brushLibraryFile.path)
             }
         }
         if (brushPrefs.contains(BRUSHES_SEEN) || brushPrefs.contains(BRUSH_CHOICES)) {
@@ -2582,6 +2587,25 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
         // the library as kept, with what shipped since joining it, and the brushes in use as left;
         // else edits kept by versions before the library was
         if (!s.openBrushes(brushesDir.path)) brushPrefs.getString(BRUSH_CHANGES, null)?.let { s.applyBrushChanges(it) }
+    }
+
+    /** Imports the built-in Procreate brush presets from assets into the library, one set per
+     *  folder, each named "Prct <FolderName>" (e.g. "Prct Pens", "Prct Pencils"). */
+    private fun importBuiltInBrushes(s: CanvasSession) {
+        val assets = app.assets
+        val folders = assets.list("brushes") ?: return
+        // addBrushesRead(0) inserts each set at position 0, so import in reverse folder order
+        // for the sets to appear on the shelf in folder order.
+        for (folder in folders.sorted().reversed()) {
+            val files = assets.list("brushes/$folder") ?: continue
+            val brushFiles = files.filter { it.endsWith(".brush") }.sorted()
+            if (brushFiles.isEmpty()) continue
+            val bytesList = brushFiles.map { file ->
+                assets.open("brushes/$folder/$file").use { it.readBytes() }
+            }
+            io.github.artcraftandroid.procraft.core.readBrushSet(bytesList, brushFiles, "Prct $folder")
+                ?.let { it.addBrushesRead(0) }
+        }
     }
 
     private fun start(s: CanvasSession, dir: File, brushesLoaded: Boolean = false) {

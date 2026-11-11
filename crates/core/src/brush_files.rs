@@ -244,6 +244,29 @@ pub fn read_brushes(bytes: Vec<u8>, file_name: Option<String>) -> Option<std::sy
     read_any_brushes(&bytes, file_name).map(|read| std::sync::Arc::new(BrushesRead(std::sync::Mutex::new(Some(read)))))
 }
 
+/// Several brush files read as one named set at the top of the library: each file's brushes are
+/// collected into a set called `set_name` (e.g. "Prct Pens"). Used to ship built-in Procreate
+/// presets organized by category, with no manual import needed.
+#[uniffi::export]
+pub fn read_brush_set(
+    bytes_list: Vec<Vec<u8>>,
+    names: Vec<String>,
+    set_name: String,
+) -> Option<std::sync::Arc<BrushesRead>> {
+    let mut brushes: Vec<Brush> = Vec::new();
+    for (bytes, name) in bytes_list.into_iter().zip(names.into_iter()) {
+        if let Some(ReadBrushes::One(brush)) = read_any_brushes(&bytes, Some(name)) {
+            brushes.push(*brush);
+        }
+    }
+    if brushes.is_empty() {
+        return None;
+    }
+    Some(std::sync::Arc::new(BrushesRead(std::sync::Mutex::new(Some(
+        ReadBrushes::Set { name: set_name, brushes },
+    )))))
+}
+
 #[uniffi::export]
 impl CanvasSession {
     /// Adds brushes read meanwhile ([`read_brushes`]) to the library, as
