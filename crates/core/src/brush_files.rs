@@ -262,9 +262,7 @@ pub fn read_brush_set(
     if brushes.is_empty() {
         return None;
     }
-    Some(std::sync::Arc::new(BrushesRead(std::sync::Mutex::new(Some(
-        ReadBrushes::Set { name: set_name, brushes },
-    )))))
+    Some(std::sync::Arc::new(BrushesRead(std::sync::Mutex::new(Some(ReadBrushes::Set { name: set_name, brushes })))))
 }
 
 #[uniffi::export]

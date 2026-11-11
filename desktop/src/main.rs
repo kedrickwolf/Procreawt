@@ -106,10 +106,7 @@ fn import_builtin_brushes(session: &CanvasSession, brushes_dir: &str) {
         return; // a kept library already exists, nothing to import
     }
     let Ok(root) = std::fs::read_dir(BUILTIN_BRUSHES_DIR) else { return };
-    let mut folders: Vec<_> = root
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_dir())
-        .collect();
+    let mut folders: Vec<_> = root.filter_map(|e| e.ok()).filter(|e| e.path().is_dir()).collect();
     folders.sort_by_key(|e| e.file_name());
     // add_read_brushes inserts each set at position 0, so import in reverse folder order
     // for the sets to appear on the shelf in folder order.
