@@ -1448,6 +1448,8 @@ fn stock_shape(n: &str) -> u32 {
         (&["cloud", "fog", "smoke"], shape::CLOUD),
         (&["wisp", "wind"], shape::WISP),
         (&["star", "sparkle", "glint", "flare", "twinkle"], shape::SPARKLE),
+        // Procreate's stock shapes: phoenix (fire/bird) is a multi-pointed spark-like stamp
+        (&["phoenix"], shape::SPARKLE),
         (&["ring", "bokeh", "circle", "bubble"], shape::RING),
         (&["square", "pixel", "block", "box"], shape::SQUARE),
         (&["hatch", "line", "stripe"], shape::HATCH),
@@ -1613,6 +1615,8 @@ fn named_grain(n: &str) -> Option<u32> {
         // the sheet
         (&["paper", "cardboard"], grain::SHEET),
         (&["grunge", "dirt", "dust", "dirty"], grain::GRUNGE),
+        // Procreate's stock grains: paragon (in the Grunge folder) is a grunge texture
+        (&["paragon"], grain::GRUNGE),
         (&["fibre", "fiber", "hair", "straw"], grain::FIBRE),
         (&["sand", "grit"], grain::SAND),
         (&["noise", "static"], grain::FINE_NOISE),
