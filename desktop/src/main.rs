@@ -71,7 +71,8 @@ mod zoom;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use procraft_core::CanvasSession;
+use procraft_core::{CanvasSession, ReadBrushes, read_any_brushes};
+use std::path::Path;
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
 use winit::event::WindowEvent;
@@ -84,6 +85,10 @@ use crate::ui::{Action, Interface};
 /// A new artwork's size when the screen's isn't known.
 const FALLBACK_CANVAS: (u32, u32) = (1920, 1080);
 
+/// Directory of built-in Procreate brush presets, one subfolder per set.
+/// Each subfolder becomes a library set named "Prct <FolderName>".
+const BUILTIN_BRUSHES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/brushes");
+
 /// A picture being made a new artwork: since when, the gallery folder it goes in, and its reading.
 type ReadingPhoto = (Instant, Option<String>, std::thread::JoinHandle<Result<Arc<CanvasSession>, String>>);
 
@@ -91,6 +96,44 @@ type ReadingPhoto = (Instant, Option<String>, std::thread::JoinHandle<Result<Arc
 /// opened to be shared as (the gallery's Share), and its reading.
 type ReadingArtwork =
     (Instant, String, Option<animated_export::Animated>, std::thread::JoinHandle<Result<Arc<CanvasSession>, String>>);
+
+/// Import built-in Procreate brush presets into the library if it has not been kept yet.
+/// Each subfolder of `BUILTIN_BRUSHES_DIR` becomes a library set named "Prct <FolderName>".
+/// Called before the first `open_brushes` so the brushes ship with the app.
+fn import_builtin_brushes(session: &CanvasSession, brushes_dir: &str) {
+    let library_path = Path::new(brushes_dir).join("library.json");
+    if library_path.is_file() {
+        return; // a kept library already exists, nothing to import
+    }
+    let Ok(root) = std::fs::read_dir(BUILTIN_BRUSHES_DIR) else { return };
+    let mut folders: Vec<_> = root.filter_map(|e| e.ok()).filter(|e| e.path().is_dir()).collect();
+    folders.sort_by_key(|e| e.file_name());
+    // add_read_brushes inserts each set at position 0, so import in reverse folder order
+    // for the sets to appear on the shelf in folder order.
+    for folder in folders.iter().rev() {
+        let folder_name = folder.file_name().to_string_lossy().to_string();
+        let set_name = format!("Prct {}", folder_name);
+        let Ok(files) = std::fs::read_dir(folder.path()) else { continue };
+        let mut brushes: Vec<_> = Vec::new();
+        for file in files.flatten() {
+            let path = file.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("brush") {
+                continue;
+            }
+            let Ok(data) = std::fs::read(&path) else { continue };
+            let Some(name) = path.file_name().map(|n| n.to_string_lossy().to_string()) else { continue };
+            match read_any_brushes(&data, Some(name)) {
+                Some(ReadBrushes::One(brush)) => brushes.push(*brush),
+                Some(ReadBrushes::Set { brushes: set_brushes, .. }) => brushes.extend(set_brushes),
+                Some(ReadBrushes::Text(_)) | None => {}
+            }
+        }
+        if !brushes.is_empty() {
+            session.add_read_brushes(ReadBrushes::Set { name: set_name, brushes }, 0);
+        }
+    }
+    let _ = session.save_brush_library_file(library_path.to_string_lossy().into_owned());
+}
 
 /// Artworks being brought in into a gallery folder: one read on a thread of its own (an artwork of
 /// many layers takes seconds), since when, and those still to come.
@@ -617,6 +660,7 @@ impl App {
         if let Some(last) = &self.session {
             files::keep_brushes(last);
         }
+        import_builtin_brushes(&session, files::brushes_dir());
         session.open_brushes(files::brushes_dir());
         self.ui.opened(&session, scale * screen.egui.egui_ctx().zoom_factor());
         session.show_in(size.width, size.height);
