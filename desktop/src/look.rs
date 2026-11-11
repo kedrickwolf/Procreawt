@@ -594,25 +594,19 @@ fn png_path(name: &str, px: u32) -> Option<String> {
     } else {
         [format!("{base}.png"), format!("{base}@2x.png"), format!("{base}@3x.png")]
     };
-    for path in candidates {
-        if std::path::Path::new(&path).exists() {
-            return Some(path);
-        }
-    }
-    None
+    candidates.into_iter().find(|path| std::path::Path::new(path).exists())
 }
 
 /// `icon` drawn white `px` pixels across.  Toolbar icons ship as PNGs
 /// (assets/icons/procraft/<name>.png); fall back to rasterising SVG path data when missing.
 fn raster_icon(icon: &Icon, px: u32) -> egui::ColorImage {
-    if let Some(path) = png_path(icon.name, px) {
-        if let Ok(data) = std::fs::read(&path) {
-            if let Ok(img) = image::load_from_memory(&data) {
-                let rgba = img.to_rgba8();
-                let [w, h] = [rgba.width() as usize, rgba.height() as usize];
-                return egui::ColorImage::from_rgba_unmultiplied([w, h], &rgba.into_raw());
-            }
-        }
+    if let Some(path) = png_path(icon.name, px)
+        && let Ok(data) = std::fs::read(&path)
+        && let Ok(img) = image::load_from_memory(&data)
+    {
+        let rgba = img.to_rgba8();
+        let [w, h] = [rgba.width() as usize, rgba.height() as usize];
+        return egui::ColorImage::from_rgba_unmultiplied([w, h], &rgba.into_raw());
     }
 
     // Fall back to rasterising the SVG path data.
