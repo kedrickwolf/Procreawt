@@ -750,7 +750,7 @@ private fun GalleryHeader(
                 }
             } else {
                 Text(
-                    "ProCraft",
+                    "Procreate",
                     color = Pc.GalleryTitle,
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Bold,
@@ -1778,8 +1778,9 @@ private fun AboutApp(onRecover: () -> Unit, onClose: () -> Unit) {
                     modifier = Modifier.requiredSize(450.dp),
                 )
             }
-            Text("ProCraft", color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(top = 12.dp))
-            Text(version, color = AboutInk, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 14.dp))
+            Text("Procreate Android", color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(top = 12.dp))
+            Text("Version 0.0.6-beta Build 5013", color = AboutInk, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 14.dp))
+            Text("Custom Mod for Procraft/artcraft modded by Kainedawuff & Claude", color = AboutInk, fontSize = 11.sp, maxLines = 2, modifier = Modifier.padding(top = 4.dp))
         }
         Box(
             Modifier.align(Alignment.TopCenter).padding(top = AboutButtonTop).size(220.dp, 38.dp).clip(RoundedCornerShape(8.dp))

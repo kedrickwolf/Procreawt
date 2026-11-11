@@ -307,7 +307,7 @@ fun ActionsPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier)
         )
         else -> listOf(
             listOf(
-                Act("About ProCraft") { dialog = "ProCraft" to "Version ${versionName(context)}" },
+                Act("About Procreate") { dialog = "Procreate" to "Version ${versionName(context)}" },
                 Act("Licences") { dialog = "Licences" to licences(context) },
             ),
             listOf(
