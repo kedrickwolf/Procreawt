@@ -583,8 +583,39 @@ impl Look {
     }
 }
 
-/// `icon` drawn white `px` pixels across.
+/// Pick the best-resolution PNG for `name` at target pixel size `px` (assets/icons/procraft/<name>.png, @2x, @3x).
+fn png_path(name: &str, px: u32) -> Option<String> {
+    let base = format!("assets/icons/procraft/{name}");
+    // Larger px → higher resolution PNG.
+    let candidates = if px > 110 {
+        [format!("{base}@3x.png"), format!("{base}@2x.png"), format!("{base}.png")]
+    } else if px > 60 {
+        [format!("{base}@2x.png"), format!("{base}@3x.png"), format!("{base}.png")]
+    } else {
+        [format!("{base}.png"), format!("{base}@2x.png"), format!("{base}@3x.png")]
+    };
+    for path in candidates {
+        if std::path::Path::new(&path).exists() {
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// `icon` drawn white `px` pixels across.  Toolbar icons ship as PNGs
+/// (assets/icons/procraft/<name>.png); fall back to rasterising SVG path data when missing.
 fn raster_icon(icon: &Icon, px: u32) -> egui::ColorImage {
+    if let Some(path) = png_path(icon.name, px) {
+        if let Ok(data) = std::fs::read(&path) {
+            if let Ok(img) = image::load_from_memory(&data) {
+                let rgba = img.to_rgba8();
+                let [w, h] = [rgba.width() as usize, rgba.height() as usize];
+                return egui::ColorImage::from_rgba_unmultiplied([w, h], &rgba.into_raw());
+            }
+        }
+    }
+
+    // Fall back to rasterising the SVG path data.
     let mut svg = format!(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}">"#, icon.width, icon.height);
     for part in icon.parts {
         if part.fill {
