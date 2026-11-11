@@ -254,7 +254,7 @@ pub fn read_brush_set(
     set_name: String,
 ) -> Option<std::sync::Arc<BrushesRead>> {
     let mut brushes: Vec<Brush> = Vec::new();
-    for (bytes, name) in bytes_list.into_iter().zip(names.into_iter()) {
+    for (bytes, name) in bytes_list.into_iter().zip(names) {
         if let Some(ReadBrushes::One(brush)) = read_any_brushes(&bytes, Some(name)) {
             brushes.push(*brush);
         }
