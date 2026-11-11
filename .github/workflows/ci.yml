@@ -72,6 +72,11 @@ jobs:
       - name: Release APK and lint
         working-directory: android
         run: ./gradlew --no-daemon :app:assembleRelease :app:lintRelease
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
       - name: Unit tests
         working-directory: android
         run: ./gradlew --no-daemon :app:testDebugUnitTest -Pprocraft.abis=x86_64
