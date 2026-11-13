@@ -333,7 +333,8 @@ impl State {
         // if we cached stamps from a previous build and the count matches, transform centres
         // instead of rebuilding the whole stroke from scratch on every drag
         if let Some(base_shape) = edit.base_shape.as_ref()
-            && edit.base_stamps.len() == expected && !edit.base_stamps.is_empty()
+            && edit.base_stamps.len() == expected
+            && !edit.base_stamps.is_empty()
         {
             let pivot = edit.base_pivot;
             let d = base_shape.nodes.first().copied().unwrap_or(Vec2::ZERO) - pivot;
