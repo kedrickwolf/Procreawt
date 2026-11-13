@@ -310,7 +310,7 @@ impl State {
 
     /// Redraws the open stroke along the shape's outline.
     fn draw_shape(&mut self) {
-        let (Some(edit), Some(old)) = (self.shape.as_ref(), self.stroke.as_ref()) else { return };
+        let (Some(edit), Some(old)) = (self.shape.as_mut(), self.stroke.as_ref()) else { return };
         // when the pen is no longer holding, cached centres are stale
         if edit.held.is_none() {
             edit.base_shape = None;
@@ -341,7 +341,7 @@ impl State {
                     let re = d_t.dot(d) / len2;
                     let im = d.cross(d_t) / len2;
                     let rot = im.atan2(re);
-                    let mut transformed: Vec<Stamp> = edit
+                    let transformed: Vec<Stamp> = edit
                         .base_stamps
                         .iter()
                         .map(|&s| {
