@@ -332,38 +332,38 @@ impl State {
         });
         // if we cached stamps from a previous build and the count matches, transform centres
         // instead of rebuilding the whole stroke from scratch on every drag
-        if let Some(base_shape) = edit.base_shape.as_ref() {
-            if edit.base_stamps.len() == expected && !edit.base_stamps.is_empty() {
-                let pivot = edit.base_pivot;
-                let d = base_shape.nodes.first().copied().unwrap_or(Vec2::ZERO) - pivot;
-                let d_t = edit.shape.nodes.first().copied().unwrap_or(Vec2::ZERO) - pivot;
-                let len2 = d.dot(d);
-                if len2 >= 1.0 {
-                    let re = d_t.dot(d) / len2;
-                    let im = d.cross(d_t) / len2;
-                    let rot = im.atan2(re);
-                    let transformed: Vec<Stamp> = edit
-                        .base_stamps
-                        .iter()
-                        .map(|&s| {
-                            let mut s = s;
-                            let d = s.center - pivot;
-                            s.center = pivot + Vec2::new(d.x * re - d.y * im, d.x * im + d.y * re);
-                            s.angle = (s.angle + rot).rem_euclid(TAU);
-                            s
-                        })
-                        .collect();
-                    if let Some(canvas) = self.canvas.as_mut() {
-                        // nothing drawn ahead of the pen before it snapped stays over the shape
-                        canvas.set_prediction(&[]);
-                        canvas.set_tip(&[]);
-                        // made a shape, a dual brush's stroke goes on as its first alone
-                        canvas.drop_second();
-                        canvas.replace_stamps(&transformed);
-                    }
-                    self.second = None;
-                    return;
+        if let Some(base_shape) = edit.base_shape.as_ref()
+            && edit.base_stamps.len() == expected && !edit.base_stamps.is_empty()
+        {
+            let pivot = edit.base_pivot;
+            let d = base_shape.nodes.first().copied().unwrap_or(Vec2::ZERO) - pivot;
+            let d_t = edit.shape.nodes.first().copied().unwrap_or(Vec2::ZERO) - pivot;
+            let len2 = d.dot(d);
+            if len2 >= 1.0 {
+                let re = d_t.dot(d) / len2;
+                let im = d.cross(d_t) / len2;
+                let rot = im.atan2(re);
+                let transformed: Vec<Stamp> = edit
+                    .base_stamps
+                    .iter()
+                    .map(|&s| {
+                        let mut s = s;
+                        let d = s.center - pivot;
+                        s.center = pivot + Vec2::new(d.x * re - d.y * im, d.x * im + d.y * re);
+                        s.angle = (s.angle + rot).rem_euclid(TAU);
+                        s
+                    })
+                    .collect();
+                if let Some(canvas) = self.canvas.as_mut() {
+                    // nothing drawn ahead of the pen before it snapped stays over the shape
+                    canvas.set_prediction(&[]);
+                    canvas.set_tip(&[]);
+                    // made a shape, a dual brush's stroke goes on as its first alone
+                    canvas.drop_second();
+                    canvas.replace_stamps(&transformed);
                 }
+                self.second = None;
+                return;
             }
         }
         let mut builder = StrokeBuilder::with_seed(old.brush().clone(), old.diameter(), old.pointer(), 0x5eed_1234)
