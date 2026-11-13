@@ -310,6 +310,7 @@ impl State {
 
     /// Redraws the open stroke along the shape's outline.
     fn draw_shape(&mut self) {
+        let scale = self.brush_scale();
         let (Some(edit), Some(old)) = (self.shape.as_mut(), self.stroke.as_ref()) else { return };
         // when the pen is no longer holding, cached centres are stale
         if edit.held.is_none() {
@@ -366,7 +367,7 @@ impl State {
             }
         }
         let mut builder = StrokeBuilder::with_seed(old.brush().clone(), old.diameter(), old.pointer(), 0x5eed_1234)
-            .scaled(self.brush_scale())
+            .scaled(scale)
             .exact_path();
         let samples = resample(&outline, &edit.along);
         builder.add(&samples);
