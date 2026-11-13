@@ -9,7 +9,7 @@ use procraft_engine::document::LayerId;
 use procraft_engine::geom::Vec2;
 use procraft_engine::input::Sample;
 use procraft_engine::quickshape::{Anchor, Shape, ShapeKind, end_hook_reach, fit_ellipse, recognise, without_end_hook};
-use procraft_engine::stroke::StrokeBuilder;
+use procraft_engine::stroke::{Stamp, StrokeBuilder};
 use procraft_gpu::{Canvas, StrokeStyle};
 
 use crate::{CanvasSession, PointerKind, State};
@@ -104,6 +104,12 @@ pub(crate) struct ShapeEdit {
     held: Option<Held>,
     /// The stroke it was made of, for undo to go back to.
     stroke: Option<DrawnStroke>,
+    /// Cached base shape and its stamps: while the pen still holds the shape and drags it, the
+    /// outline only turns and grows about its pivot, so stamp centres can be transformed instead
+    /// of rebuilding the whole stroke from scratch on every drag.
+    base_shape: Option<Shape>,
+    base_pivot: Vec2,
+    base_stamps: Vec<Stamp>,
 }
 
 impl ShapeEdit {
@@ -127,6 +133,9 @@ impl ShapeEdit {
             modes: Vec::new(),
             held,
             stroke,
+            base_shape: None,
+            base_pivot: Vec2::ZERO,
+            base_stamps: Vec::new(),
         }
     }
 
@@ -301,22 +310,73 @@ impl State {
 
     /// Redraws the open stroke along the shape's outline.
     fn draw_shape(&mut self) {
-        let (Some(edit), Some(old)) = (self.shape.as_ref(), self.stroke.as_ref()) else { return };
+        let scale = self.brush_scale();
+        let (Some(edit), Some(old)) = (self.shape.as_mut(), self.stroke.as_ref()) else { return };
+        // when the pen is no longer holding, cached centres are stale
+        if edit.held.is_none() {
+            edit.base_shape = None;
+            edit.base_stamps.clear();
+        }
         // the outline is the path: nothing smooths it, or round its corners
-        let mut builder = StrokeBuilder::with_seed(old.brush().clone(), old.diameter(), old.pointer(), 0x5eed_1234)
-            .scaled(self.brush_scale())
-            .exact_path();
-        // an ellipse goes where the stroke went, each of its points taken onto it: a stroke that
-        // didn't close stays open there, as drawn, rather than meeting itself in a seam
         let outline = match edit.shape.kind {
             ShapeKind::Ellipse | ShapeKind::Circle => {
                 along_ellipse(&edit.shape.nodes, &edit.drawn).unwrap_or_else(|| edit.shape.outline())
             }
             _ => edit.shape.outline(),
         };
+        // how many stamps this outline yields, to know if cached centres still line up
+        let expected: usize = outline.windows(2).fold(1, |acc, w| {
+            let [a, b] = w else { return acc };
+            let step = a.distance(*b);
+            acc + (step / SAMPLE_STEP).ceil().max(1.0) as usize
+        });
+        // if we cached stamps from a previous build and the count matches, transform centres
+        // instead of rebuilding the whole stroke from scratch on every drag
+        if let Some(base_shape) = edit.base_shape.as_ref()
+            && edit.base_stamps.len() == expected
+            && !edit.base_stamps.is_empty()
+        {
+            let pivot = edit.base_pivot;
+            let d = base_shape.nodes.first().copied().unwrap_or(Vec2::ZERO) - pivot;
+            let d_t = edit.shape.nodes.first().copied().unwrap_or(Vec2::ZERO) - pivot;
+            let len2 = d.dot(d);
+            if len2 >= 1.0 {
+                let re = d_t.dot(d) / len2;
+                let im = d.cross(d_t) / len2;
+                let rot = im.atan2(re);
+                let transformed: Vec<Stamp> = edit
+                    .base_stamps
+                    .iter()
+                    .map(|&s| {
+                        let mut s = s;
+                        let d = s.center - pivot;
+                        s.center = pivot + Vec2::new(d.x * re - d.y * im, d.x * im + d.y * re);
+                        s.angle = (s.angle + rot).rem_euclid(TAU);
+                        s
+                    })
+                    .collect();
+                if let Some(canvas) = self.canvas.as_mut() {
+                    // nothing drawn ahead of the pen before it snapped stays over the shape
+                    canvas.set_prediction(&[]);
+                    canvas.set_tip(&[]);
+                    // made a shape, a dual brush's stroke goes on as its first alone
+                    canvas.drop_second();
+                    canvas.replace_stamps(&transformed);
+                }
+                self.second = None;
+                return;
+            }
+        }
+        let mut builder = StrokeBuilder::with_seed(old.brush().clone(), old.diameter(), old.pointer(), 0x5eed_1234)
+            .scaled(scale)
+            .exact_path();
         let samples = resample(&outline, &edit.along);
         builder.add(&samples);
         let stamps = builder.finish();
+        // cache for the next drag: transform centres instead of rebuilding
+        edit.base_stamps = stamps.clone();
+        edit.base_shape = Some(edit.shape.clone());
+        edit.base_pivot = edit.shape.pivot();
         if let Some(canvas) = self.canvas.as_mut() {
             // nothing drawn ahead of the pen before it snapped stays over the shape
             canvas.set_prediction(&[]);
@@ -876,6 +936,8 @@ impl CanvasSession {
         let edit = st.shape.as_mut()?;
         if begin {
             edit.held = Some(Held { snapped: edit.shape.clone(), from: at, at, finger: false });
+            edit.base_shape = None;
+            edit.base_stamps.clear();
         } else if st.follow_shape(at) {
             self.shared.frame(st);
         }
